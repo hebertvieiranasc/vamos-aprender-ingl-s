@@ -406,6 +406,48 @@ tr:nth-child(even) td{background:#f8faf8;}
 .ch-music-artist{font-size:12px;color:var(--muted);font-weight:600;margin-top:1px;}
 .ch-music-why{font-size:11.5px;color:var(--text);margin-top:5px;line-height:1.5;opacity:.8;}
 .ch-music-arr{font-size:18px;color:var(--purple);flex-shrink:0;}
+/* ── MODALS ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
+.modal-overlay.open{display:flex;animation:fadeIn .2s ease;}
+.modal-box{background:#fff;border-radius:20px;width:100%;max-width:620px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:slideUp .25s ease;}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:22px 26px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:2;border-radius:20px 20px 0 0;}
+.modal-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--green-d);}
+.modal-close{width:36px;height:36px;border-radius:50%;border:none;background:var(--border);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.modal-close:hover{background:var(--red-l);color:var(--red);}
+.modal-body{padding:20px 26px 26px;}
+
+/* ── VOICE SELECTOR ── */
+#voiceBar{
+  position:fixed;bottom:18px;right:18px;z-index:500;
+  display:flex;align-items:center;gap:8px;
+  background:#1a5235;color:#fff;
+  border-radius:30px;padding:8px 14px 8px 10px;
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+  font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+#voiceBar:hover{background:#2e7d4f;transform:translateY(-2px);}
+#voiceBar .vb-icon{font-size:16px;}
+#voicePanel{
+  position:fixed;bottom:62px;right:18px;z-index:500;
+  background:#fff;border-radius:16px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+  padding:18px 20px;width:300px;
+  display:none;font-family:'Nunito',sans-serif;
+  border:1px solid #ddd9ce;
+}
+#voicePanel.open{display:block;animation:fadeIn .2s ease;}
+#voicePanel h4{font-size:14px;font-weight:900;color:#1a5235;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.vp-label{font-size:11px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;margin-top:12px;}
+.vp-label:first-of-type{margin-top:0;}
+#voiceSelect{width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid #ddd9ce;font-family:'Nunito',sans-serif;font-size:13px;color:#1a1e26;background:#f9f9f6;outline:none;cursor:pointer;}
+#voiceSelect:focus{border-color:#2e7d4f;}
+.vp-row{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+.vp-row label{font-size:12px;color:#6b7280;font-weight:700;}
+.vp-row input[type=range]{width:110px;}
+.vp-test{width:100%;margin-top:14px;padding:9px;border-radius:8px;border:none;background:#e6f4ec;color:#1a5235;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;transition:background .15s;}
+.vp-test:hover{background:#b8ddc8;}
+.vp-close{float:right;background:none;border:none;font-size:16px;color:#6b7280;cursor:pointer;margin-top:-2px;}
 </style>
 
 
@@ -422,6 +464,30 @@ tr:nth-child(even) td{background:#f8faf8;}
     </div>
   </div>
 </header>
+
+<!-- ── VOICE SELECTOR BAR ── -->
+<div id="voiceBar" onclick="toggleVoicePanel()">
+  <span class="vb-icon">🔊</span>
+  <span id="vbLabel">Voice: Default</span>
+</div>
+<div id="voicePanel">
+  <h4>🎙️ Voice Settings <button class="vp-close" onclick="toggleVoicePanel()">✕</button></h4>
+  <div class="vp-label">Choose Voice</div>
+  <select id="voiceSelect" onchange="changeVoice(this.value)">
+    <option value="">Loading voices...</option>
+  </select>
+  <div class="vp-row">
+    <label>Speed</label>
+    <input type="range" id="rateSlider" min="0.5" max="1.3" step="0.05" value="0.82" oninput="changeRate(this.value)"/>
+    <span id="rateVal" style="font-size:11px;color:#6b7280;font-weight:700;min-width:28px;">0.82</span>
+  </div>
+  <div class="vp-row">
+    <label>Pitch</label>
+    <input type="range" id="pitchSlider" min="0.5" max="1.8" step="0.05" value="1.0" oninput="changePitch(this.value)"/>
+    <span id="pitchVal" style="font-size:11px;color:#6b7280;font-weight:700;min-width:28px;">1.0</span>
+  </div>
+  <button class="vp-test" onclick="testVoice()">▶ Test Voice — "Hello! My name is Teacher Ale."</button>
+</div>
 
 <!-- ── SCOREBOARD MODAL ── -->
 <div class="modal-overlay" id="scoreModal">
@@ -2079,31 +2145,144 @@ function showCh(n){
 // ════════════════════════════════
 // 🔊 UNIFIED SPEAK FUNCTION
 // ════════════════════════════════
-let currentSpeakEl=null;
+// ════════════════════════════════
+// 🔊 VOICE SETTINGS
+// ════════════════════════════════
+let currentSpeakEl = null;
+let selectedVoice  = null;   // null = auto-pick best
+let speechRate     = 0.82;
+let speechPitch    = 1.0;
+
+// Priority order for best English voices
+// Male preferred: Daniel (UK), Google UK English Male, Alex, Fred
+// Female fallback: Samantha, Karen, Google US English, etc.
+const VOICE_PRIORITY_MALE = [
+  'Daniel','Google UK English Male','Alex','Fred',
+  'Google US English Male','Microsoft David','Microsoft Mark',
+  'Thomas','Google UK English Female','Samantha','Karen',
+  'Google US English','Victoria','Moira'
+];
+
+function getBestVoice(voices){
+  const enVoices = voices.filter(v=>v.lang.startsWith('en'));
+  // Try priority list first
+  for(const name of VOICE_PRIORITY_MALE){
+    const found = enVoices.find(v=>v.name.includes(name));
+    if(found) return found;
+  }
+  // Fallback: any en-US voice
+  return enVoices.find(v=>v.lang==='en-US') || enVoices[0] || voices[0];
+}
+
 function speak(text, el){
-  if(!window.speechSynthesis){alert('Your browser does not support speech synthesis. Please use Chrome or Edge.');return;}
+  if(!window.speechSynthesis){return;}
   window.speechSynthesis.cancel();
-  // Remove playing class from previous
   if(currentSpeakEl){currentSpeakEl.classList.remove('playing','speaking');}
-  // Find closest clickable parent if el not provided
-  if(!el && event && event.currentTarget){el=event.currentTarget;}
+  if(!el && typeof event!=='undefined' && event && event.currentTarget){el=event.currentTarget;}
   currentSpeakEl=el;
   if(el)el.classList.add('playing');
-  const u=new SpeechSynthesisUtterance(text);
-  u.lang='en-US';u.rate=0.82;u.pitch=1.05;u.volume=1;
-  // Try to pick a natural English voice
-  const voices=window.speechSynthesis.getVoices();
-  const pref=voices.find(v=>v.lang==='en-US'&&v.name.includes('Natural'))||
-             voices.find(v=>v.lang==='en-US'&&v.name.includes('Google'))||
-             voices.find(v=>v.lang==='en-US')||
-             voices.find(v=>v.lang.startsWith('en'));
-  if(pref)u.voice=pref;
-  u.onend=()=>{if(el)el.classList.remove('playing','speaking');currentSpeakEl=null;};
-  u.onerror=()=>{if(el)el.classList.remove('playing','speaking');currentSpeakEl=null;};
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang   = 'en-US';
+  u.rate   = speechRate;
+  u.pitch  = speechPitch;
+  u.volume = 1;
+  // Use selected voice or auto-pick best
+  const voices = window.speechSynthesis.getVoices();
+  if(selectedVoice){
+    const found = voices.find(v=>v.name===selectedVoice);
+    if(found) u.voice = found;
+  } else {
+    u.voice = getBestVoice(voices);
+  }
+  u.onend  = ()=>{if(el)el.classList.remove('playing','speaking');currentSpeakEl=null;};
+  u.onerror= ()=>{if(el)el.classList.remove('playing','speaking');currentSpeakEl=null;};
   window.speechSynthesis.speak(u);
 }
-// Load voices
-if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+
+// ── Voice Panel Controls ──────────────────────────
+function toggleVoicePanel(){
+  const p = document.getElementById('voicePanel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) populateVoiceSelect();
+}
+
+function populateVoiceSelect(){
+  const sel = document.getElementById('voiceSelect');
+  const voices = window.speechSynthesis.getVoices();
+  const enVoices = voices.filter(v=>v.lang.startsWith('en'));
+  if(enVoices.length===0){sel.innerHTML='<option>No English voices found</option>';return;}
+
+  // Sort: male-sounding names first, then rest
+  const maleKeywords = ['male','Male','daniel','Daniel','alex','Alex','fred','Fred','david','David','mark','Mark','thomas','Thomas','james','James','george','George'];
+  const maleVoices   = enVoices.filter(v=>maleKeywords.some(k=>v.name.includes(k)));
+  const otherVoices  = enVoices.filter(v=>!maleKeywords.some(k=>v.name.includes(k)));
+
+  let html = '<option value="">🤖 Auto (best available)</option>';
+  if(maleVoices.length>0){
+    html += '<optgroup label="👨 Male Voices">';
+    maleVoices.forEach(v=>{
+      const sel2 = selectedVoice===v.name ? ' selected' : '';
+      html += `<option value="${v.name}"${sel2}>${v.name} (${v.lang})</option>`;
+    });
+    html += '</optgroup>';
+  }
+  if(otherVoices.length>0){
+    html += '<optgroup label="👩 Other English Voices">';
+    otherVoices.forEach(v=>{
+      const sel2 = selectedVoice===v.name ? ' selected' : '';
+      html += `<option value="${v.name}"${sel2}>${v.name} (${v.lang})</option>`;
+    });
+    html += '</optgroup>';
+  }
+  sel.innerHTML = html;
+}
+
+function changeVoice(name){
+  selectedVoice = name || null;
+  const label = document.getElementById('vbLabel');
+  if(label) label.textContent = name ? 'Voice: '+name.split(' ')[0] : 'Voice: Auto';
+  // save preference
+  try{localStorage.setItem('ale_voice', name);}catch(e){}
+}
+
+function changeRate(val){
+  speechRate = parseFloat(val);
+  const el = document.getElementById('rateVal');
+  if(el) el.textContent = parseFloat(val).toFixed(2);
+  try{localStorage.setItem('ale_rate', val);}catch(e){}
+}
+
+function changePitch(val){
+  speechPitch = parseFloat(val);
+  const el = document.getElementById('pitchVal');
+  if(el) el.textContent = parseFloat(val).toFixed(1);
+  try{localStorage.setItem('ale_pitch', val);}catch(e){}
+}
+
+function testVoice(){
+  speak("Hello! My name is Teacher Ale. Welcome to Let's Learn English!");
+}
+
+function loadVoicePrefs(){
+  try{
+    const v=localStorage.getItem('ale_voice');
+    const r=localStorage.getItem('ale_rate');
+    const p=localStorage.getItem('ale_pitch');
+    if(v){selectedVoice=v; const lb=document.getElementById('vbLabel');if(lb)lb.textContent='Voice: '+v.split(' ')[0];}
+    if(r){speechRate=parseFloat(r); const rs=document.getElementById('rateSlider');if(rs){rs.value=r;const rv=document.getElementById('rateVal');if(rv)rv.textContent=parseFloat(r).toFixed(2);}}
+    if(p){speechPitch=parseFloat(p); const ps=document.getElementById('pitchSlider');if(ps){ps.value=p;const pv=document.getElementById('pitchVal');if(pv)pv.textContent=parseFloat(p).toFixed(1);}}
+  }catch(e){}
+}
+
+// Load voices when available
+if(window.speechSynthesis){
+  window.speechSynthesis.onvoiceschanged=()=>{
+    window.speechSynthesis.getVoices();
+    loadVoicePrefs();
+  };
+  // Load prefs after short delay (voices may not be ready yet)
+  setTimeout(loadVoicePrefs, 800);
+}
 
 // ════════════════════════════════
 // ALPHABET
